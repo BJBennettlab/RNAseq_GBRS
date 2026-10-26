@@ -1,46 +1,32 @@
 # 1_GBRS_Pipeline
 
-SLURM-based HPC scripts for the full GBRS allele-specific expression pipeline in CC mice. Scripts are designed to run sequentially as SLURM jobs on an HPC cluster.
+`gbrs_sample.slurm` runs GBRS for one sample per Slurm array task. Start it with `./run.sh submit` from the
+repository root after `./run.sh sheet` has written `WORKDIR/samples.tsv` (see the main README).
 
-## Pipeline Steps
+## Steps in each task
 
-| Script | Step | Description |
-|--------|------|-------------|
-| `1_gbrs_alignment.slurm` | 1 | Bowtie2 alignment to pooled-founder transcriptome |
-| `2_bowtie_stats.slurm` | 2a | Summarize Bowtie2 alignment statistics |
-| `2_combine_txt_files.sh` | 2b | Combine alignment stat text files |
-| `3_bam_sort_index.slurm` | 3 | Sort and index BAM files (SAMtools) |
-| `4_bam2emase.slurm` | 4 | Convert BAM to EMASE alignment format |
-| `5_common_align_merge.slurm.py` | 5 | Merge multi-way EMASE alignments |
-| `6_compress_emase.slurm` | 6 | Compress EMASE alignment files |
-| `7_quantify.slurm` | 7 | EMASE quantification (allele-specific counts) |
-| `8_reconstruct.slurm` | 8 | GBRS genotype reconstruction |
-| `9_quantify_ASE.slurm` | 9 | Allele-specific expression quantification |
-| `10_combine_counts.py` | 10 | Combine per-sample count files |
-| `11_confirm_reads2counts.py` | 11 | Validate count matrix integrity |
-| `12_interpolate.slurm` | 12 | Interpolate genotype probabilities |
-| `13_plot_genome.slurm` | 13 | Plot genome-wide genotype reconstruction |
-| `14_genotype_export.slurm` | 14 | Export reconstructed genotypes |
+| Step | Command | Output kept in `WORKDIR/samples/<sample>/` |
+| --- | --- | --- |
+| Align R1 and R2 separately to the pooled-founder transcriptome | `bowtie -q -a --best --strata --sam -v 3` | `<sample>.bowtie_R1.log`, `_R2.log` |
+| Convert each BAM to an EMASE alignment file | `gbrs bam2emase -h A,B,C,D,E,F,G,H` | (temporary) |
+| Keep alignments common to both mates | `emase get-common-alignments` | (temporary) |
+| Compress | `gbrs compress` | `<sample>.compressed.emase.h5` |
+| Quantify (multiway) | `gbrs quantify -M 4 --report-alignment-counts` | `<sample>.multiway.*` |
+| Reconstruct the genome | `gbrs reconstruct` with `tranprob.DO.G<generation>.<sex>.npz` | `<sample>.genotypes.tsv`, `.genoprobs.npz`, `.genotypes.npz` |
+| Quantify with the reconstructed genotypes | `gbrs quantify -G` | `<sample>.diploid.*` (allele-specific expression) |
+| Interpolate, export and plot | `gbrs interpolate`, `export`, `plot` | `<sample>.interpolated.genoprobs.npz`, `.gbrs.interpolated.genoprobs.tsv`, `.plotted.genome.pdf` |
 
-## Usage
+BAMs and uncompressed EMASE files are written to node-local scratch and removed. A task writes into
+`<sample>.partial/` and renames it to `<sample>/` only after every output exists and `done.json` is written; a
+failed attempt is kept as `<sample>.failed_<time>/`. A finished sample is never overwritten.
 
-Run scripts in numerical order. Each script requires `samples.txt` (one sample name per line) and appropriate reference files (CC diploid transcriptome, transition probability matrices).
+## Settings that change results
 
-```bash
-mkdir -p slurmout
-sbatch 1_gbrs_alignment.slurm
-# Wait for completion, then:
-sbatch 3_bam_sort_index.slurm
-# etc.
-```
+`EMASE_MODEL` (4), `HAPLOTYPES`, `TPROB_TEMPLATE` with each sample's sex and generation, the reference directory
+(recorded with checksums in `reference_manifest.json`) and the container image (pinned by digest). `done.json`
+records all of them for each sample.
 
-## Reference Data
+## Resources
 
-The pooled-founder transcriptome and additional files required by these scripts are archived on Zenodo (Dawson Budke is a contributor):
-
-> Lloyd, Michael. (2025). *Reference Data for EMASE and GBRS*. Zenodo. https://doi.org/10.5281/zenodo.15091310
-
-## Notes
-
-- Scripts were developed for CC pup ASE analysis; extending to CCRIX requires generation of CCRIX-specific transition probability files (see `2_GBRS_Analysis/`)
-- Transition probability matrices for CC mice (generation 20) are provided in `2_GBRS_Analysis/`
+On Ceres, 16 CPUs and 96 GB per sample, typically several hours per sample; alignment of the two mates takes most
+of the time. `THROTTLE` limits how many samples run at once.

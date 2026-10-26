@@ -1,0 +1,134 @@
+#!/bin/bash
+# GBRS for one sample: one Slurm array task per row of WORKDIR/samples.tsv.
+#
+#   bowtie 1 (R1 and R2 separately, all best-stratum alignments, up to 3 mismatches)
+#   -> bam2emase -> alignments common to both mates -> compress
+#   -> quantify (multiway) -> reconstruct (sex- and generation-specific transition
+#   probabilities) -> quantify with the reconstructed genotypes (diploid)
+#   -> interpolate -> export -> plot
+#
+# BAMs and uncompressed EMASE files stay in node-local scratch and are removed.
+# The compressed alignment file and every GBRS output are kept in
+# WORKDIR/samples/<sample>/. done.json records inputs, tool versions, alignment
+# counts and output checksums; a sample with done.json is never overwritten.
+#
+#   ./run.sh submit        (or ./run.sh submit --array=1,5 for chosen rows)
+#SBATCH --job-name=gbrs
+#SBATCH --nodes=1
+#SBATCH --ntasks=1
+#SBATCH --output=slurmout/gbrs_%A_%a.out
+
+set -euo pipefail
+umask 007
+
+find_pipeline_root() {
+    local c
+    for c in "${PIPELINE_ROOT:-}" "${SLURM_SUBMIT_DIR:-}" \
+             "$(cd "$(dirname "${BASH_SOURCE[0]}")/.." 2>/dev/null && pwd)"; do
+        if [[ -n "$c" && -f "$c/config.sh" ]]; then echo "$c"; return 0; fi
+    done
+    echo "ERROR: cannot locate config.sh; run through ./run.sh or export PIPELINE_ROOT" >&2
+    return 1
+}
+HERE="$(find_pipeline_root)"
+source "$HERE/config.sh"
+# The container brings bowtie, GBRS and EMASE; SAMtools and Python come from the site or PATH.
+if [[ -n "$GBRS_SIF" ]]; then
+    load_software "$MODULE_APPTAINER" "$MODULE_SAMTOOLS" "$MODULE_PYTHON"
+else
+    load_software "$MODULE_BOWTIE" "$MODULE_SAMTOOLS" "$MODULE_PYTHON"
+fi
+
+task=${SLURM_ARRAY_TASK_ID:?run as a Slurm array task}
+row=$(awk -F'\t' -v n="$((task + 1))" 'NR == n' "$SAMPLE_SHEET")
+[[ -n "$row" ]] || { echo "ERROR: task $task has no row in $SAMPLE_SHEET" >&2; exit 1; }
+IFS=$'\t' read -r sample r1 r2 r1_bytes r2_bytes sex generation <<< "$row"
+echo "task $task sample $sample sex $sex generation $generation host $HOSTNAME start $(date -Is)"
+
+out="$GBRS_OUT/$sample"
+[[ -e "$out/done.json" ]] && { echo "ERROR: $out/done.json exists; this sample is finished" >&2; exit 1; }
+[[ "$(stat -c %s "$r1")" == "$r1_bytes" && "$(stat -c %s "$r2")" == "$r2_bytes" ]] \
+    || { echo "ERROR: $sample reads changed since the sample sheet was written" >&2; exit 1; }
+
+tprob="${TPROB_TEMPLATE//\{sex\}/$sex}"; tprob="${tprob//\{generation\}/$generation}"
+[[ "$tprob" == /* ]] || tprob="$REF_DIR/$tprob"
+[[ -s "$tprob" ]] || { echo "ERROR: transition probabilities not found: $tprob" >&2; exit 1; }
+
+scratch="${TMPDIR:-/tmp}/gbrs_${sample}_${SLURM_JOB_ID:-$$}"
+# Keep an earlier failed attempt for inspection instead of mixing its files in.
+[[ -e "$out.partial" ]] && mv "$out.partial" "$out.failed_$(date +%Y%m%dT%H%M%S)"
+mkdir -p "$scratch" "$out.partial"
+trap 'rm -rf "$scratch"' EXIT
+cpus=${SLURM_CPUS_PER_TASK:-$CPUS}
+binds=$(printf '%s\n' "$WORKDIR" "$REF_DIR" "$(dirname "$r1")" "$(dirname "$r2")" "$scratch" "$(dirname "$tprob")" | sort -u | paste -sd, -)
+tool() {
+    if [[ -n "$GBRS_SIF" ]]; then
+        apptainer exec --cleanenv --bind "$binds" "$GBRS_SIF" "$@"
+    else
+        "$@"
+    fi
+}
+p="$out.partial/$sample"
+
+for mate in R1 R2; do
+    reads=$r1; [[ $mate == R2 ]] && reads=$r2
+    echo "align $mate $(date -Is)"
+    tool bowtie -p "$cpus" -q -a --best --strata --sam -v 3 -x "$BOWTIE_INDEX" "$reads" 2> "$p.bowtie_$mate.log" \
+        | samtools view -b -o "$scratch/$mate.bam" -
+    echo "bam2emase $mate $(date -Is)"
+    tool gbrs bam2emase -i "$scratch/$mate.bam" -m "$REF_DIR/emase.fullTranscripts.info" \
+        -h "$HAPLOTYPES" -o "$scratch/$mate.emase.h5"
+    rm -f "$scratch/$mate.bam"
+done
+
+echo "common alignments $(date -Is)"
+tool emase get-common-alignments -i "$scratch/R1.emase.h5" -i "$scratch/R2.emase.h5" -o "$scratch/merged.emase.h5"
+tool gbrs compress -i "$scratch/merged.emase.h5" -o "$p.compressed.emase.h5"
+rm -f "$scratch"/*.emase.h5
+
+echo "quantify $(date -Is)"
+tool gbrs quantify -i "$p.compressed.emase.h5" -g "$REF_DIR/emase.gene2transcripts.tsv" \
+    -L "$REF_DIR/emase.pooled.fullTranscripts.info" -M "$EMASE_MODEL" --report-alignment-counts -o "$p"
+echo "reconstruct $(date -Is)"
+tool gbrs reconstruct -e "$p.multiway.genes.tpm" -t "$tprob" -x "$REF_DIR/gbrs_emissions_all_tissues.avecs.npz" \
+    -g "$REF_DIR/ref.gene_pos.ordered_ensBuild_105.npz" -o "$p"
+echo "quantify with genotypes $(date -Is)"
+tool gbrs quantify -i "$p.compressed.emase.h5" -G "$p.genotypes.tsv" -g "$REF_DIR/emase.gene2transcripts.tsv" \
+    -L "$REF_DIR/emase.pooled.fullTranscripts.info" -M "$EMASE_MODEL" --report-alignment-counts -o "$p"
+echo "interpolate, export, plot $(date -Is)"
+tool gbrs interpolate -i "$p.genoprobs.npz" -g "$REF_DIR/ref.genome_grid.GRCm39.tsv" \
+    -p "$REF_DIR/ref.gene_pos.ordered_ensBuild_105.npz" -o "$p.interpolated.genoprobs.npz"
+tool gbrs export -i "$p.interpolated.genoprobs.npz" -s "$HAPLOTYPES" -g "$REF_DIR/ref.genome_grid.GRCm39.tsv" \
+    -o "$p.gbrs.interpolated.genoprobs.tsv"
+tool gbrs plot -i "$p.interpolated.genoprobs.npz" -o "$p.plotted.genome.pdf" -n "$sample"
+
+versions="$(tool bash -c 'pip list 2>/dev/null | grep -i -E "^(gbrs|emase) " | tr -s " " | paste -sd";"; bowtie --version | head -1' | paste -sd"|")|$(samtools --version | head -1)"
+python3 - "$out.partial" "$sample" "$r1" "$r2" "$sex" "$generation" "$tprob" "${GBRS_IMAGE:-}" "$versions" <<'PY'
+import hashlib, json, re, sys
+from pathlib import Path
+d, sample, r1, r2, sex, gen, tprob, image, versions = sys.argv[1:]
+d = Path(d)
+def sha(p):
+    h = hashlib.sha256()
+    with p.open('rb') as f:
+        for b in iter(lambda: f.read(1 << 20), b''): h.update(b)
+    return h.hexdigest()
+stats = {}
+for mate in ('R1', 'R2'):
+    log = (d / f'{sample}.bowtie_{mate}.log').read_text()
+    m = re.search(r'reads processed: (\d+)', log); a = re.search(r'at least one reported alignment: (\d+)', log)
+    if not m or not a: raise SystemExit(f'bowtie log for {mate} lacks its summary')
+    stats[mate] = {'reads': int(m.group(1)), 'aligned': int(a.group(1))}
+if stats['R1']['reads'] != stats['R2']['reads']: raise SystemExit('R1 and R2 read counts differ')
+needed = ['multiway.genes.tpm', 'genotypes.tsv', 'genoprobs.npz', 'diploid.genes.expected_read_counts',
+          'interpolated.genoprobs.npz', 'gbrs.interpolated.genoprobs.tsv', 'compressed.emase.h5']
+for n in needed:
+    p = d / f'{sample}.{n}'
+    if not p.is_file() or p.stat().st_size == 0: raise SystemExit(f'missing output {p.name}')
+record = {'sample': sample, 'reads': {'r1': r1, 'r2': r2}, 'sex': sex, 'generation': int(gen),
+          'transition_probabilities': tprob, 'container': image, 'versions': versions, 'bowtie': stats,
+          'outputs': {p.name: sha(p) for p in sorted(d.iterdir()) if p.is_file()}}
+(d / 'done.json').write_text(json.dumps(record, indent=1) + '\n')
+PY
+mv "$out.partial" "$out"
+echo "done $sample $(date -Is)"

@@ -1,0 +1,5 @@
+/run_settings.sh
+/work/
+__pycache__/
+*.pyc
+*.sif

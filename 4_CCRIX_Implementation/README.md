@@ -57,12 +57,9 @@ Cosine similarity of GBRS-derived CCRIX diplotypes vs. "Combined matrices by Sex
 
 ## Recommended Pipeline Usage
 
-For CCRIX samples, use the DO.G0 transition probability file from the GBRS Zenodo reference archive (Lloyd 2025) as input to `1_GBRS_Pipeline/8_reconstruct.slurm`:
-
-```bash
-# In 8_reconstruct.slurm, set:
---tranprob-file tranprob.DO.G0.npz   # or .h5 equivalent
-```
+For CCRIX samples, use the DO.G0 transition probability files from the GBRS Zenodo reference archive (Lloyd 2025):
+keep the default `TPROB_TEMPLATE` (`transition_probabilities/tranprob.DO.G{generation}.{sex}.npz`) and give every
+CCRIX sample `generation` 0 in the sample list.
 
 ## Large Output Files (Not in Git)
 

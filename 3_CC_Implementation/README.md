@@ -13,7 +13,9 @@ Novel implementation of GBRS for Collaborative Cross (CC) and CCRIX mice. The st
 
 ### Transition Probability Matrices
 
-Required input for `1_GBRS_Pipeline/8_reconstruct.slurm`.
+Used by genome reconstruction for CC mice. The same files are in the GBRS Zenodo reference (Lloyd 2025), so a CC run sets
+`TPROB_TEMPLATE="transition_probabilities/tranprob.CC.G20.{sex}.npz"` in its settings (the sample list's `generation`
+column is then not used; give 20).
 
 | File | Description |
 |------|-------------|
@@ -41,7 +43,7 @@ Open `CC.trans.prob.Rmd` in RStudio and knit to regenerate transition probabilit
 rmarkdown::render("CC.trans.prob.Rmd")
 ```
 
-The output `.h5` files are then passed to `1_GBRS_Pipeline/8_reconstruct.slurm` via the `--tranprob-file` argument.
+To use newly generated files, point `TPROB_TEMPLATE` at them (absolute path, with `{sex}` for M or F).
 
 ## Notes
 

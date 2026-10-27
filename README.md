@@ -11,14 +11,19 @@ GBRS uses RNA-seq reads to simultaneously perform:
 2. **Allele-specific expression** — quantify expression separately for each of the 8 CC founder alleles
 
 This approach is based on [Choi et al. 2021 (GBRS)](https://github.com/churchill-lab/gbrs) and the [EMASE](https://github.com/churchill-lab/emase) framework.
+[docs/method.md](docs/method.md) explains what GBRS adds over a single-reference count such as
+[RNAseq_STAR](https://github.com/BJBennettlab/RNAseq_STAR), which mice and settings it needs, and the two ways of
+combining the reads of a pair.
 
 ## Repository Structure
 
 ```
 RNAseq_GBRS/
-├── 1_GBRS_Pipeline/          # Slurm job: alignment → quantification → genotype reconstruction, one task per sample
-├── scripts/                  # reference download, sample sheet check, result joining
-├── config.sh, run.sh         # settings and the entry point (copy examples/ceres.sh to run_settings.sh)
+├── run.sh, config.sh         # entry point and settings (copy examples/ceres.sh to run_settings.sh)
+├── 0_Setup/                  # Slurm job: pinned container and verified reference
+├── 1_GBRS_Pipeline/          # Slurm jobs: one task per sample, then combine and validate
+├── scripts/                  # sample sheet, reference download, mate combining, joining, validation, DNA export
+├── docs/                     # method, validation, run time
 ├── 2_GBRS_Analysis/          # R Markdown: ASE visualization and interpretation
 ├── 3_CC_Implementation/      # CC-specific transition probability generation and reference data
 └── 4_CCRIX_Implementation/   # CCRIX validation workflow and results (uses DO.G0 transprob)
@@ -27,62 +32,70 @@ RNAseq_GBRS/
 ## Workflow
 
 ```
-Preprocessed FASTQs (from RNAseq_STAR)
+Paired-end reads (usually RNAseq_STAR's HTStream output) + sample list (sample, sex, generation)
     │
     ▼
-1_GBRS_Pipeline (one Slurm array task per sample)
-    ├── Bowtie 1 alignment of R1 and R2 to the pooled-founder transcriptome
-    ├── BAM → EMASE format
-    ├── Combine the two mates: "either" (2025 rule) and/or "both" (GBRS authors' rule), from one alignment
-    ├── EMASE quantification (multiway)
-    ├── Genotype reconstruction (GBRS reconstruct)
-    ├── Allele-specific expression quantification with the reconstructed genotypes
-    ├── Genotype interpolation, export and genome plot
-    └── run.sh combine: gene-by-sample counts, diplotypes and founder counts
+./run.sh all     (every step is a Slurm job; each waits for the one before)
+    ├── setup      pinned GBRS container, reference from Zenodo with checksums
+    ├── samples    one array task per sample:
+    │                Bowtie 1 alignment of R1 and R2 to the pooled-founder transcriptome → EMASE format
+    │                → combine the two reads by each mate rule ("either" and/or "both")
+    │                → quantify → reconstruct the genome → quantify with the reconstructed genotypes
+    │                → interpolate, export and plot the genotype probabilities
+    ├── combine    gene-by-sample counts, diplotypes and founder counts for each mate rule
+    └── validate   finished samples, sex, duplicate genotypes, DNA and STAR identity
     │
     ▼
-2_GBRS_Analysis             ← uses transition probability files from 3_CC_Implementation/
+2_GBRS_Analysis   ← uses transition probability files from 3_CC_Implementation/
     └── ASE visualization and interpretation
 ```
 
-## Dependencies
-
-| Stage | Tools |
-|-------|-------|
-| HPC pipeline | GBRS and EMASE 1.0 with Bowtie 1 (pinned container), SAMtools, Apptainer, Slurm |
-| R analysis | R, GBRS R package, ape, ggplot2 |
-
 ## Running the pipeline
 
-The input is the preprocessed reads from [RNAseq_STAR](https://github.com/BJBennettlab/RNAseq_STAR)
-(`01-HTS_Preproc/<sample>/<sample>_R1.fastq.gz` and `_R2.fastq.gz`) and a tab-separated sample list with the
-columns `sample`, `sex` (M or F) and `generation`. On Ceres:
+On Ceres:
 
 ```bash
 git clone https://github.com/BJBennettlab/RNAseq_GBRS.git
 cd RNAseq_GBRS
 cp examples/ceres.sh run_settings.sh   # set WORKDIR, READS_DIR, SAMPLE_LIST, SLURM_ACCOUNT
-./run.sh containers                    # GBRS 1.0 container, pinned by digest
-./run.sh references                    # Zenodo record 15091310, MD5-checked
-./run.sh sheet                         # every sample's reads found by exact name
+./run.sh sheet                         # finds every sample's reads by exact name, writes WORKDIR/samples.tsv
 ./run.sh check
-./run.sh submit
+./run.sh all                           # setup if needed, every sample, combine, validate
 ./run.sh status
-./run.sh combine                       # after every sample has finished
 ```
 
-On another Slurm cluster, set `SLURM_PARTITION`, the module names (or `SOFTWARE_MODE=path`) and keep the container.
-Samples are always matched by their full name: a sample named `MOUSE_1` never picks up `MOUSE_10`'s reads. Each
-sample's folder holds a `done.json` with its inputs, sex and generation, the transition-probability file, tool
-versions, alignment counts and output checksums. `run.sh combine` refuses to join an unfinished or changed sample.
+The sample list is tab-separated with the columns `sample`, `sex` (M or F) and `generation`. By default each
+sample's reads are `READS_DIR/<sample>/<sample>_R1.fastq.gz` and `_R2.fastq.gz`, the layout of RNAseq_STAR's
+HTStream stage; `r1` and `r2` columns name the read files directly instead. Optional columns for the checks:
+`mouse_id` (the mouse's ID in the DNA genotype file), `genotype_group` (samples expected to share a genotype) and
+`star_library`. For CC and CC-RIX mice, see the table in [docs/method.md](docs/method.md).
+
+Samples are always matched by their full name: a sample named `MOUSE_1` never picks up `MOUSE_10`'s reads, and a
+read file listed for two samples stops the run. Each sample's folder holds a `done.json` with its inputs, sex and
+generation, transition-probability file, tool versions, pipeline revision, alignment counts and output checksums.
+A finished sample is never overwritten; rerun failed rows with `./run.sh submit --array=LIST`.
+
+On another Slurm cluster, start from `examples/other_slurm.sh`. Run time, memory and storage are in
+[docs/runtime.md](docs/runtime.md).
 
 | Output in `WORKDIR` | Contents |
 | --- | --- |
-| `samples/<sample>/<rule>/` | multiway and diploid quantification, `genotypes.tsv`, `genoprobs.npz`, interpolated and exported genotype probabilities, genome plot, compressed alignments, bowtie logs, `done.json` |
+| `samples/<sample>/<rule>/` | multiway and diploid quantification, `genotypes.tsv`, `genoprobs.npz`, interpolated and exported genotype probabilities, genome plot, compressed alignments |
+| `samples/<sample>/` | bowtie logs and `done.json` |
 | `combined/<rule>/gbrs_counts.tsv` | gene by sample expected read counts (diploid quantification, column `total`) |
 | `combined/<rule>/gbrs_diplotypes.tsv` | gene by sample reconstructed diplotype |
 | `combined/<rule>/gbrs_founder_counts.tsv` | gene by sample and founder expected read counts |
-| `combined/qc.tsv`, `SHA256SUMS.txt` | read pairs, aligned reads per mate, sex, generation, versions; checksums |
+| `combined/<rule>/qc.tsv`, `SHA256SUMS.txt` | read pairs, aligned reads per mate, sex, generation, versions; checksums |
+| `validation/<rule>/` | `summary.json` and one table per check ([docs/validation.md](docs/validation.md)) |
+| `jobs.tsv`, `slurmout/` | every submitted job with its pipeline revision; job logs |
+
+## Dependencies
+
+| Stage | Tools |
+|-------|-------|
+| HPC pipeline | Slurm, Apptainer, SAMtools, Python 3; GBRS, EMASE and Bowtie 1 from the pinned container |
+| DNA genotypes for the identity check (optional) | R with the mice's R/qtl2 allele probabilities (`scripts/export_dna_alleleprobs.R`) |
+| R analysis | R, GBRS R package, ape, ggplot2 |
 
 ## Reference Data
 

@@ -20,7 +20,8 @@ READS_DIR="/path/to/run/01-HTS_Preproc"
 SAMPLE_LIST="/path/to/gbrs_samples.tsv"
 
 # GBRS reference files (Zenodo record 15091310, GRCm39 / Ensembl 105).
-# Point several runs at the same directory to download it once (about 2.2 GB).
+# Point several runs at the same directory to download it once (about 2.2 GB to
+# download, 5.7 GB unpacked).
 REF_DIR="${WORKDIR}/references"
 
 # Transition probabilities. {sex} becomes M or F and {generation} the sample's

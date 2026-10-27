@@ -1,5 +1,23 @@
 # Changelog
 
+## 2026-10-27
+
+Every step that reads data or computes now runs as a Slurm job, and a run is checked before its results are used.
+
+- `./run.sh all` submits setup (when the container or reference is missing), the per-sample array, `combine` and
+  `validate`, each waiting for the one before, and records every job with its pipeline revision in
+  `WORKDIR/jobs.tsv`. `./run.sh setup` (`0_Setup/gbrs_setup.slurm`) replaces `containers` and `references`;
+  Apptainer does not run on Ceres login nodes. `combine` and `validate` are Slurm jobs.
+- `scripts/validate_gbrs.py` (`./run.sh validate`) checks that every sample finished, that sex from Xist and Y-gene
+  expression agrees with the sample list, that no two samples from different genotype groups share a genotype,
+  and, when `DNA_ALLELEPROBS` or `STAR_COUNTS` is set, that each sample best matches its own mouse's DNA genotype
+  and its own STAR library. `scripts/export_dna_alleleprobs.R` writes the DNA file from R/qtl2.
+- The sample list may name read files in `r1` and `r2` columns instead of using `READS_DIR`, and may carry
+  `mouse_id`, `genotype_group` and `star_library` for the checks. A read file listed for two samples stops the run.
+- `done.json` records the pipeline revision (`git describe`, or the `REVISION` file of a copy without `.git`).
+- Defaults from measured runs: 64 GB and 12 hours per sample. Documentation: `docs/method.md` (GBRS and STAR,
+  inputs, mate rules, versions), `docs/validation.md` and `docs/runtime.md`; `examples/other_slurm.sh`.
+
 ## 2026-10-26
 
 The 14 numbered scripts in `1_GBRS_Pipeline/` are replaced by one Slurm array job, `gbrs_sample.slurm`, run through

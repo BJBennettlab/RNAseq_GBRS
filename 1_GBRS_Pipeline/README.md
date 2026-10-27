@@ -1,7 +1,13 @@
 # 1_GBRS_Pipeline
 
-`gbrs_sample.slurm` runs GBRS for one sample per Slurm array task. Start it with `./run.sh submit` from the
-repository root after `./run.sh sheet` has written `WORKDIR/samples.tsv` (see the main README).
+| Job | Started by | Does |
+| --- | --- | --- |
+| `gbrs_sample.slurm` | `./run.sh submit` (or `all`) | GBRS for one sample per array task |
+| `gbrs_downstream.sh` | `gbrs_sample.slurm` | the steps after the reads are combined, with an output check after each |
+| `gbrs_combine.slurm` | `./run.sh combine` (or `all`) | gene-by-sample tables for each mate rule (`scripts/combine_gbrs.py`) |
+| `gbrs_validate.slurm` | `./run.sh validate` (or `all`) | the checks in `docs/validation.md` (`scripts/validate_gbrs.py`) |
+
+Run them from the repository root after `./run.sh sheet` has written `WORKDIR/samples.tsv` (see the main README).
 
 ## Steps in each task
 
@@ -37,5 +43,5 @@ records all of them for each sample.
 
 ## Resources
 
-On Ceres, 16 CPUs and 96 GB per sample, typically several hours per sample; alignment of the two mates takes most
-of the time. `THROTTLE` limits how many samples run at once.
+On Ceres, 16 CPUs and 64 GB per sample; 1.5 to 2.6 hours for a 20-million-pair library, mostly alignment
+([docs/runtime.md](../docs/runtime.md)). `THROTTLE` limits how many samples run at once.

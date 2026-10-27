@@ -4,7 +4,7 @@ READS_DIR="/90daydata/YOUR_PROJECT/rnaseq_run/01-HTS_Preproc"   # not needed whe
 SAMPLE_LIST="/90daydata/YOUR_PROJECT/gbrs_samples.tsv"           # columns: sample, sex (M/F), generation
 # Share one verified reference and container between runs:
 # REF_DIR="/90daydata/YOUR_PROJECT/references/gbrs_zenodo_15091310"
-# GBRS_SIF="/90daydata/YOUR_PROJECT/containers/gbrs_py3_v1.0.1.sif"
+# GBRS_SIF="/90daydata/YOUR_PROJECT/containers/gbrs_py3_v1.1.0-338c782.sif"
 # Checks after the run (docs/validation.md), both optional:
 # DNA_ALLELEPROBS="/90daydata/YOUR_PROJECT/dna_alleleprobs.tsv.gz"   # scripts/export_dna_alleleprobs.R
 # STAR_COUNTS="/90daydata/YOUR_PROJECT/rnaseq_run/03-Counts/counts.txt"

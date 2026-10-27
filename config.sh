@@ -47,12 +47,14 @@ STAR_COUNTS=""
 SAME_MOUSE_SCORE=0.9   # genotype overlap at which two samples count as one mouse
 
 # Software. GBRS and EMASE run from a container pinned by digest (Apptainer),
-# or from PATH when GBRS_SIF is empty. v1.0.1 holds GBRS 1.0.0, the version
-# behind the lab's 2025 results; JAX's current pipeline uses GBRS 1.1.0
-# (docs/method.md, Versions). Bowtie 1 and SAMtools come from site
-# modules (SOFTWARE_MODE=modules) or PATH (SOFTWARE_MODE=path).
-GBRS_IMAGE="docker://quay.io/jaxcompsci/gbrs_py3@sha256:916de82f093a30d6132cb351412861a6c539cde950372c0f50108a9f0257af0a"
-GBRS_SIF="${WORKDIR}/containers/gbrs_py3_v1.0.1.sif"
+# or from PATH when GBRS_SIF is empty. The default is GBRS 1.1.0 (tag
+# v1.1.0-338c782), the version JAX's pipeline uses. It gave byte-identical
+# results to GBRS 1.0.0 (tag v1.0.1, the lab's 2025 version) on four DO_Chln
+# libraries; a study already run with 1.0.0 keeps it (docs/method.md, Versions).
+# The container also brings Bowtie 1. SAMtools and Python come from site modules
+# (SOFTWARE_MODE=modules) or PATH (SOFTWARE_MODE=path).
+GBRS_IMAGE="docker://quay.io/jaxcompsci/gbrs_py3@sha256:95ac892ffb209ee7a39846dfd62203b8738d440d436c4202f64caa9d8ca329b0"
+GBRS_SIF="${WORKDIR}/containers/gbrs_py3_v1.1.0-338c782.sif"
 SOFTWARE_MODE="modules"
 MODULE_APPTAINER="apptainer/1.4.1"
 MODULE_BOWTIE="bowtie/1.3.1"
@@ -74,7 +76,7 @@ if [[ -f "$settings" ]]; then
     default_ref_dir="$REF_DIR"; default_sif="$GBRS_SIF"
     source "$settings" || return $?
     if [[ "$REF_DIR" == "$default_ref_dir" ]]; then REF_DIR="${WORKDIR}/references"; fi
-    if [[ "$GBRS_SIF" == "$default_sif" ]]; then GBRS_SIF="${WORKDIR}/containers/gbrs_py3_v1.0.1.sif"; fi
+    if [[ "$GBRS_SIF" == "$default_sif" ]]; then GBRS_SIF="${WORKDIR}/containers/gbrs_py3_v1.1.0-338c782.sif"; fi
 fi
 
 SAMPLE_SHEET="${WORKDIR}/samples.tsv"

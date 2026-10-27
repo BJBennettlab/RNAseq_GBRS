@@ -8,7 +8,10 @@ Measured on Ceres in October 2026 with DO_Chln liver libraries of about 20 milli
 | Align R2, convert to EMASE | 45 to 70 minutes | |
 | Combine the reads and compress, for each mate rule | 3 to 6 minutes | 24 GB |
 | Quantify, reconstruct, interpolate, export, plot, for each mate rule | 2 minutes | under 1 GB |
-| Whole sample | 1.5 to 2.6 hours | 25 to 32 GB |
+| Whole sample, one mate rule | 1.5 to 2.6 hours | 25 to 32 GB |
+| Whole sample, both mate rules | 2.2 to 3.1 hours | 19 to 31 GB |
+
+GBRS 1.1.0 and 1.0.0 took the same time and memory.
 
 The defaults (`MEMORY=64G`, `TIME_LIMIT=12:00:00`) leave room for larger libraries. Alignment time grows with the
 number of reads. `THROTTLE` sets how many samples run at once.

@@ -23,6 +23,9 @@ Every step that reads data or computes now runs as a Slurm job, and a run is che
   summary line ('reads with at least one alignment'); the inline version expected older wording and stopped
   every sample at its last step.
 - `done.json` records the pipeline revision (`git describe`, or the `REVISION` file of a copy without `.git`).
+- The default container is GBRS 1.1.0 (`gbrs_py3:v1.1.0-338c782`, the version JAX's pipeline uses); on four DO_Chln
+  libraries it gave byte-identical results to 1.0.0. Set `GBRS_IMAGE` and `GBRS_SIF` to the v1.0.1 image to keep
+  1.0.0 for a study already run with it.
 - Defaults from measured runs: 64 GB and 12 hours per sample. Documentation: `docs/method.md` (GBRS and STAR,
   inputs, mate rules, versions), `docs/validation.md` and `docs/runtime.md`; `examples/other_slurm.sh`.
 

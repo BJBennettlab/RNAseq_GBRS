@@ -80,8 +80,8 @@ EMASE alignment files, combine the two reads by the mate rule, compress, quantif
 
 | GBRS | Container | Notes |
 | --- | --- | --- |
-| 1.0.0 | `quay.io/jaxcompsci/gbrs_py3:v1.0.1` (default, pinned by digest) | The version behind the lab's 2025 results. Rerun from the same reads, it reproduces the December 2025 DOCHLN_100 counts exactly. |
-| 1.1.0 | `quay.io/jaxcompsci/gbrs_py3:v1.1.0-338c782` | March 2026: reworked file handling and memory use, bug fixes. Used by JAX's pipeline. Being compared with 1.0.0 on four DO_Chln libraries; the default changes only after that comparison. |
+| 1.1.0 | `quay.io/jaxcompsci/gbrs_py3:v1.1.0-338c782` (default, pinned by digest) | March 2026: reworked file handling and memory use, bug fixes; used by JAX's pipeline. On four DO_Chln libraries (October 2026) its diploid counts, genotype probabilities and genotypes were byte-identical to 1.0.0's, with the same run time and memory. |
+| 1.0.0 | `quay.io/jaxcompsci/gbrs_py3:v1.0.1` | The version behind the lab's 2025 results and the DO_Chln rerun of October 2026. Rerun from the same reads, it reproduces the December 2025 DOCHLN_100 counts exactly. A study already processed with it can keep it. |
 
 JAX's Nextflow pipeline ([cs-nf-pipelines](https://github.com/TheJacksonLaboratory/cs-nf-pipelines), workflow
 `gbrs`) runs the same steps with the same reference and the `both` rule. This repository keeps the lab's Slurm setup,

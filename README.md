@@ -1,5 +1,7 @@
 # RNAseq_GBRS
 
+By Dawson Budke ([@Dpbudke](https://github.com/Dpbudke)), Bennett Lab.
+
 Genome Reconstruction by RNA-Seq (GBRS) pipeline for allele-specific expression (ASE) quantification in Collaborative Cross (CC), CC-RIX, and Diversity Outbred (DO) mice. GBRS leverages the known founder haplotype structure of CC mice to reconstruct local genotypes from RNA-seq reads and quantify founder strain-specific expression.
 
 Key contributions of this repository are the novel implementations of GBRS for CC mice (`3_CC_Implementation/`) and CCRIX mice (`4_CCRIX_Implementation/`), including generation of CC-specific transition probability matrices and validation of DO.G0-based genotype reconstruction for CCRIX samples.

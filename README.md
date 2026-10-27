@@ -33,7 +33,7 @@ Preprocessed FASTQs (from RNAseq_STAR)
 1_GBRS_Pipeline (one Slurm array task per sample)
     ├── Bowtie 1 alignment of R1 and R2 to the pooled-founder transcriptome
     ├── BAM → EMASE format
-    ├── Alignments common to both mates (emase get-common-alignments)
+    ├── Combine the two mates: "either" (2025 rule) and/or "both" (GBRS authors' rule), from one alignment
     ├── EMASE quantification (multiway)
     ├── Genotype reconstruction (GBRS reconstruct)
     ├── Allele-specific expression quantification with the reconstructed genotypes
@@ -78,10 +78,10 @@ versions, alignment counts and output checksums. `run.sh combine` refuses to joi
 
 | Output in `WORKDIR` | Contents |
 | --- | --- |
-| `samples/<sample>/` | multiway and diploid quantification, `genotypes.tsv`, `genoprobs.npz`, interpolated and exported genotype probabilities, genome plot, compressed alignments, bowtie logs, `done.json` |
-| `combined/gbrs_counts.tsv` | gene by sample expected read counts (diploid quantification, column `total`) |
-| `combined/gbrs_diplotypes.tsv` | gene by sample reconstructed diplotype |
-| `combined/gbrs_founder_counts.tsv` | gene by sample and founder expected read counts |
+| `samples/<sample>/<rule>/` | multiway and diploid quantification, `genotypes.tsv`, `genoprobs.npz`, interpolated and exported genotype probabilities, genome plot, compressed alignments, bowtie logs, `done.json` |
+| `combined/<rule>/gbrs_counts.tsv` | gene by sample expected read counts (diploid quantification, column `total`) |
+| `combined/<rule>/gbrs_diplotypes.tsv` | gene by sample reconstructed diplotype |
+| `combined/<rule>/gbrs_founder_counts.tsv` | gene by sample and founder expected read counts |
 | `combined/qc.tsv`, `SHA256SUMS.txt` | read pairs, aligned reads per mate, sex, generation, versions; checksums |
 
 ## Reference Data

@@ -71,22 +71,22 @@ class Combine(unittest.TestCase):
         self.samples = self.root / "samples"
         lines = ["sample\tr1\tr2\tr1_bytes\tr2_bytes\tsex\tgeneration"]
         for i, s in enumerate(["S_1", "S_10"]):
-            d = self.samples / s
+            d = self.samples / s / "either"
             d.mkdir(parents=True)
             body = "locus\tA\tB\tC\tD\tE\tF\tG\tH\ttotal\tnotes\n"
             body += f"g1\t{i}\t1\t0\t0\t0\t0\t0\t0\t{i + 1}\tAB\ng2\t0\t0\t2\t0\t0\t0\t0\t0\t2\tCC\n"
             out = d / f"{s}.diploid.genes.expected_read_counts"
             out.write_text(body)
-            done = {"outputs": {out.name: hashlib.sha256(out.read_bytes()).hexdigest()},
+            done = {"outputs": {f"either/{out.name}": hashlib.sha256(out.read_bytes()).hexdigest()}, "mate_rules": ["either"],
                     "bowtie": {"R1": {"reads": 10, "aligned": 9}, "R2": {"reads": 10, "aligned": 8}}, "versions": "test"}
-            (d / "done.json").write_text(json.dumps(done))
+            (d.parent / "done.json").write_text(json.dumps(done))
             lines.append(f"{s}\tr1\tr2\t1\t1\tM\t43")
         self.sheet = self.root / "samples.tsv"
         self.sheet.write_text("\n".join(lines) + "\n")
 
     def run_combine(self):
         return subprocess.run([sys.executable, str(ROOT / "scripts/combine_gbrs.py"), str(self.sheet),
-                               str(self.samples), str(self.root / "combined")], capture_output=True, text=True)
+                               str(self.samples), str(self.root / "combined"), "either"], capture_output=True, text=True)
 
     def test_tables_follow_the_sheet(self):
         result = self.run_combine()
@@ -95,8 +95,14 @@ class Combine(unittest.TestCase):
         self.assertEqual(counts, ["gene_id\tS_1\tS_10", "g1\t1\t2", "g2\t2\t2"])
         self.assertIn("g1\tAB\tAB", (self.root / "combined/gbrs_diplotypes.tsv").read_text())
 
+    def test_missing_rule_is_refused(self):
+        result = subprocess.run([sys.executable, str(ROOT / "scripts/combine_gbrs.py"), str(self.sheet),
+                                 str(self.samples), str(self.root / "combined_both"), "both"], capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("no results for the mate rule both", result.stderr)
+
     def test_unfinished_or_changed_sample_is_refused(self):
-        (self.samples / "S_10" / "S_10.diploid.genes.expected_read_counts").write_text("changed")
+        (self.samples / "S_10" / "either" / "S_10.diploid.genes.expected_read_counts").write_text("changed")
         self.assertNotEqual(self.run_combine().returncode, 0)
         (self.samples / "S_10" / "done.json").unlink()
         result = self.run_combine()

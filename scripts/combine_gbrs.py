@@ -2,8 +2,9 @@
 """Join finished GBRS samples into gene-by-sample tables.
 
 Every sample in the sample sheet must have finished (done.json present, its
-recorded output checksums unchanged). From each sample's
-<sample>.diploid.genes.expected_read_counts this writes, in sample-sheet order:
+recorded output checksums unchanged). For one mate rule (either or both), from
+each sample's <rule>/<sample>.diploid.genes.expected_read_counts this writes,
+in sample-sheet order:
 
   gbrs_counts.tsv          gene x sample, expected read counts (column total)
   gbrs_diplotypes.tsv      gene x sample, reconstructed diplotype (column notes)
@@ -14,7 +15,7 @@ recorded output checksums unchanged). From each sample's
 All samples must list the same genes in the same order. After writing, every
 cell is read back and compared with its source file.
 
-    python3 scripts/combine_gbrs.py SAMPLE_SHEET SAMPLES_DIR OUT_DIR
+    python3 scripts/combine_gbrs.py SAMPLE_SHEET SAMPLES_DIR OUT_DIR RULE
 """
 import csv
 import hashlib
@@ -33,14 +34,16 @@ def sha(path):
     return h.hexdigest()
 
 
-def read_sample(folder, sample):
+def read_sample(folder, sample, rule):
     done = json.loads((folder / "done.json").read_text())
+    if rule not in done.get("mate_rules", []):
+        raise ValueError(f"{sample}: no results for the mate rule {rule}")
     for name, digest in done["outputs"].items():
         if name.endswith(".compressed.emase.h5"):
             continue  # large; checked by size only
         if sha(folder / name) != digest:
             raise ValueError(f"{sample}: {name} changed after the sample finished")
-    path = folder / f"{sample}.diploid.genes.expected_read_counts"
+    path = folder / rule / f"{sample}.diploid.genes.expected_read_counts"
     with path.open(newline="") as stream:
         rows = list(csv.DictReader(stream, delimiter="\t"))
     if not rows or [c for c in ("locus", *FOUNDERS, "total", "notes") if c not in rows[0]]:
@@ -61,7 +64,7 @@ def read_back(path):
 
 
 def main():
-    sheet, samples_dir, out = Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3])
+    sheet, samples_dir, out, rule = Path(sys.argv[1]), Path(sys.argv[2]), Path(sys.argv[3]), sys.argv[4]
     if out.exists():
         raise SystemExit(f"{out} exists")
     with sheet.open(newline="") as stream:
@@ -73,7 +76,7 @@ def main():
     genes, totals, notes, founders, qc = None, {}, {}, {}, []
     for m in meta:
         s = m["sample"]
-        done, rows = read_sample(samples_dir / s, s)
+        done, rows = read_sample(samples_dir / s, s, rule)
         g = [r["locus"] for r in rows]
         if genes is None:
             genes = g
@@ -102,7 +105,7 @@ def main():
                 raise SystemExit(f"{name}: column {s} differs on read-back")
     names = ["gbrs_counts.tsv", "gbrs_diplotypes.tsv", "gbrs_founder_counts.tsv", "qc.tsv"]
     (out / "SHA256SUMS.txt").write_text("".join(f"{sha(out / n)}  {n}\n" for n in names))
-    print(json.dumps({"samples": len(samples), "genes": len(genes)}))
+    print(json.dumps({"rule": rule, "samples": len(samples), "genes": len(genes)}))
 
 
 if __name__ == "__main__":

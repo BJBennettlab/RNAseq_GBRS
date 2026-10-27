@@ -9,7 +9,7 @@
 #   ./run.sh submit       one Slurm array task per sample (--array=LIST for chosen rows,
 #                         --dependency=afterok:JOB to wait for another job)
 #   ./run.sh status       finished, running and failed samples
-#   ./run.sh combine      join finished samples into gene-by-sample tables
+#   ./run.sh combine      join finished samples into gene-by-sample tables, one folder per mate rule
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export PIPELINE_ROOT="$HERE"
@@ -74,7 +74,10 @@ status)
     [[ -s "$WORKDIR/jobs.tsv" ]] && cut -f1 "$WORKDIR/jobs.tsv" | paste -sd, | xargs -r -I{} sacct -j {} -X -n -o State | sort | uniq -c
     ;;
 combine)
-    need_python; python3 "$HERE/scripts/combine_gbrs.py" "$SAMPLE_SHEET" "$GBRS_OUT" "$WORKDIR/combined" "$@" ;;
+    need_python
+    for rule in $MATE_RULES; do
+        python3 "$HERE/scripts/combine_gbrs.py" "$SAMPLE_SHEET" "$GBRS_OUT" "$WORKDIR/combined/$rule" "$rule"
+    done ;;
 *)
     sed -n '2,12p' "$0"; exit 1 ;;
 esac

@@ -1,15 +1,16 @@
 #!/bin/bash
 # GBRS for one sample: one Slurm array task per row of WORKDIR/samples.tsv.
 #
-#   bowtie 1 (R1 and R2 separately, all best-stratum alignments, up to 3 mismatches)
-#   -> bam2emase -> alignments common to both mates -> compress
+#   bowtie 1 (R1 and R2 separately, all best-stratum alignments, up to 3 mismatches) -> bam2emase,
+#   then for each rule in MATE_RULES (either: a pair counts where either mate aligned, the 2025 rule;
+#   both: only where both mates aligned, the GBRS authors' step) -> combine mates -> compress
 #   -> quantify (multiway) -> reconstruct (sex- and generation-specific transition
 #   probabilities) -> quantify with the reconstructed genotypes (diploid)
 #   -> interpolate -> export -> plot
 #
 # BAMs and uncompressed EMASE files stay in node-local scratch and are removed.
 # The compressed alignment file and every GBRS output are kept in
-# WORKDIR/samples/<sample>/. done.json records inputs, tool versions, alignment
+# WORKDIR/samples/<sample>/<rule>/. done.json records inputs, tool versions, alignment
 # counts and output checksums; a sample with done.json is never overwritten.
 #
 #   ./run.sh submit        (or ./run.sh submit --array=1,5 for chosen rows)
@@ -60,7 +61,7 @@ scratch="${TMPDIR:-/tmp}/gbrs_${sample}_${SLURM_JOB_ID:-$$}"
 mkdir -p "$scratch" "$out.partial"
 trap 'rm -rf "$scratch"' EXIT
 cpus=${SLURM_CPUS_PER_TASK:-$CPUS}
-binds=$(printf '%s\n' "$WORKDIR" "$REF_DIR" "$(dirname "$r1")" "$(dirname "$r2")" "$scratch" "$(dirname "$tprob")" | sort -u | paste -sd, -)
+binds=$(printf '%s\n' "$WORKDIR" "$REF_DIR" "$HERE" "$(dirname "$r1")" "$(dirname "$r2")" "$scratch" "$(dirname "$tprob")" | sort -u | paste -sd, -)
 tool() {
     if [[ -n "$GBRS_SIF" ]]; then
         apptainer exec --cleanenv --bind "$binds" "$GBRS_SIF" "$@"
@@ -81,32 +82,41 @@ for mate in R1 R2; do
     rm -f "$scratch/$mate.bam"
 done
 
-echo "common alignments $(date -Is)"
-tool emase get-common-alignments -i "$scratch/R1.emase.h5" -i "$scratch/R2.emase.h5" -o "$scratch/merged.emase.h5"
-tool gbrs compress -i "$scratch/merged.emase.h5" -o "$p.compressed.emase.h5"
+for rule in $MATE_RULES; do
+    d="$out.partial/$rule"; q="$d/$sample"; mkdir -p "$d"
+    echo "combine mates ($rule) $(date -Is)"
+    case "$rule" in
+        both)   tool emase get-common-alignments -i "$scratch/R1.emase.h5" -i "$scratch/R2.emase.h5" \
+                    -o "$scratch/merged.emase.h5" ;;
+        either) tool python3 "$HERE/scripts/merge_mates.py" either "$scratch/R1.emase.h5" "$scratch/R2.emase.h5" \
+                    "$scratch/merged.emase.h5" ;;
+        *)      echo "ERROR: MATE_RULES may contain either and both, not $rule" >&2; exit 1 ;;
+    esac
+    tool gbrs compress -i "$scratch/merged.emase.h5" -o "$q.compressed.emase.h5"
+    rm -f "$scratch/merged.emase.h5"
+    echo "quantify ($rule) $(date -Is)"
+    tool gbrs quantify -i "$q.compressed.emase.h5" -g "$REF_DIR/emase.gene2transcripts.tsv" \
+        -L "$REF_DIR/emase.pooled.fullTranscripts.info" -M "$EMASE_MODEL" --report-alignment-counts -o "$q"
+    echo "reconstruct ($rule) $(date -Is)"
+    tool gbrs reconstruct -e "$q.multiway.genes.tpm" -t "$tprob" -x "$REF_DIR/gbrs_emissions_all_tissues.avecs.npz" \
+        -g "$REF_DIR/ref.gene_pos.ordered_ensBuild_105.npz" -o "$q"
+    echo "quantify with genotypes ($rule) $(date -Is)"
+    tool gbrs quantify -i "$q.compressed.emase.h5" -G "$q.genotypes.tsv" -g "$REF_DIR/emase.gene2transcripts.tsv" \
+        -L "$REF_DIR/emase.pooled.fullTranscripts.info" -M "$EMASE_MODEL" --report-alignment-counts -o "$q"
+    echo "interpolate, export, plot ($rule) $(date -Is)"
+    tool gbrs interpolate -i "$q.genoprobs.npz" -g "$REF_DIR/ref.genome_grid.GRCm39.tsv" \
+        -p "$REF_DIR/ref.gene_pos.ordered_ensBuild_105.npz" -o "$q.interpolated.genoprobs.npz"
+    tool gbrs export -i "$q.interpolated.genoprobs.npz" -s "$HAPLOTYPES" -g "$REF_DIR/ref.genome_grid.GRCm39.tsv" \
+        -o "$q.gbrs.interpolated.genoprobs.tsv"
+    tool gbrs plot -i "$q.interpolated.genoprobs.npz" -o "$q.plotted.genome.pdf" -n "$sample"
+done
 rm -f "$scratch"/*.emase.h5
 
-echo "quantify $(date -Is)"
-tool gbrs quantify -i "$p.compressed.emase.h5" -g "$REF_DIR/emase.gene2transcripts.tsv" \
-    -L "$REF_DIR/emase.pooled.fullTranscripts.info" -M "$EMASE_MODEL" --report-alignment-counts -o "$p"
-echo "reconstruct $(date -Is)"
-tool gbrs reconstruct -e "$p.multiway.genes.tpm" -t "$tprob" -x "$REF_DIR/gbrs_emissions_all_tissues.avecs.npz" \
-    -g "$REF_DIR/ref.gene_pos.ordered_ensBuild_105.npz" -o "$p"
-echo "quantify with genotypes $(date -Is)"
-tool gbrs quantify -i "$p.compressed.emase.h5" -G "$p.genotypes.tsv" -g "$REF_DIR/emase.gene2transcripts.tsv" \
-    -L "$REF_DIR/emase.pooled.fullTranscripts.info" -M "$EMASE_MODEL" --report-alignment-counts -o "$p"
-echo "interpolate, export, plot $(date -Is)"
-tool gbrs interpolate -i "$p.genoprobs.npz" -g "$REF_DIR/ref.genome_grid.GRCm39.tsv" \
-    -p "$REF_DIR/ref.gene_pos.ordered_ensBuild_105.npz" -o "$p.interpolated.genoprobs.npz"
-tool gbrs export -i "$p.interpolated.genoprobs.npz" -s "$HAPLOTYPES" -g "$REF_DIR/ref.genome_grid.GRCm39.tsv" \
-    -o "$p.gbrs.interpolated.genoprobs.tsv"
-tool gbrs plot -i "$p.interpolated.genoprobs.npz" -o "$p.plotted.genome.pdf" -n "$sample"
-
 versions="$(tool bash -c 'pip list 2>/dev/null | grep -i -E "^(gbrs|emase) " | tr -s " " | paste -sd";"; bowtie --version | head -1' | paste -sd"|")|$(samtools --version | head -1)"
-python3 - "$out.partial" "$sample" "$r1" "$r2" "$sex" "$generation" "$tprob" "${GBRS_IMAGE:-}" "$versions" <<'PY'
+python3 - "$out.partial" "$sample" "$r1" "$r2" "$sex" "$generation" "$tprob" "${GBRS_IMAGE:-}" "$versions" "$MATE_RULES" <<'PY'
 import hashlib, json, re, sys
 from pathlib import Path
-d, sample, r1, r2, sex, gen, tprob, image, versions = sys.argv[1:]
+d, sample, r1, r2, sex, gen, tprob, image, versions, rules = sys.argv[1:]
 d = Path(d)
 def sha(p):
     h = hashlib.sha256()
@@ -122,12 +132,14 @@ for mate in ('R1', 'R2'):
 if stats['R1']['reads'] != stats['R2']['reads']: raise SystemExit('R1 and R2 read counts differ')
 needed = ['multiway.genes.tpm', 'genotypes.tsv', 'genoprobs.npz', 'diploid.genes.expected_read_counts',
           'interpolated.genoprobs.npz', 'gbrs.interpolated.genoprobs.tsv', 'compressed.emase.h5']
-for n in needed:
-    p = d / f'{sample}.{n}'
-    if not p.is_file() or p.stat().st_size == 0: raise SystemExit(f'missing output {p.name}')
+for rule in rules.split():
+    for n in needed:
+        p = d / rule / f'{sample}.{n}'
+        if not p.is_file() or p.stat().st_size == 0: raise SystemExit(f'missing output {rule}/{p.name}')
 record = {'sample': sample, 'reads': {'r1': r1, 'r2': r2}, 'sex': sex, 'generation': int(gen),
           'transition_probabilities': tprob, 'container': image, 'versions': versions, 'bowtie': stats,
-          'outputs': {p.name: sha(p) for p in sorted(d.iterdir()) if p.is_file()}}
+          'mate_rules': rules.split(),
+          'outputs': {str(p.relative_to(d)): sha(p) for p in sorted(d.rglob('*')) if p.is_file()}}
 (d / 'done.json').write_text(json.dumps(record, indent=1) + '\n')
 PY
 mv "$out.partial" "$out"

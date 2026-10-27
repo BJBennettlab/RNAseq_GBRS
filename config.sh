@@ -29,6 +29,11 @@ TPROB_TEMPLATE="transition_probabilities/tranprob.DO.G{generation}.{sex}.npz"
 HAPLOTYPES="A,B,C,D,E,F,G,H"
 EMASE_MODEL=4
 
+# How the two mates of a read pair are combined; each rule gets its own results from one alignment.
+#   either  a pair counts toward a transcript and founder where either mate aligned (the lab's 2025 GBRS rule)
+#   both    only where both mates aligned (emase get-common-alignments, the GBRS authors' paired-end step)
+MATE_RULES="either both"
+
 # Software. GBRS and EMASE run from a container pinned by digest (Apptainer),
 # or from PATH when GBRS_SIF is empty. Bowtie 1 and SAMtools come from site
 # modules (SOFTWARE_MODE=modules) or PATH (SOFTWARE_MODE=path).

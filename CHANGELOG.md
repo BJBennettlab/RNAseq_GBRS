@@ -15,8 +15,12 @@ reconstruction with sex-specific transition probabilities.
 - GBRS 1.0.0, EMASE and Bowtie 1 run from the JAX container `quay.io/jaxcompsci/gbrs_py3:v1.0.1`, pinned by digest.
   `scripts/fetch_references.py` downloads the reference files from Zenodo record 15091310, checks the published
   MD5 of each and records SHA-256 for every file.
-- The two mates are combined with `emase get-common-alignments`, as in the JAX GBRS pipeline, instead of the
-  separate `5_common_align_merge.slurm.py`. BAMs are no longer coordinate-sorted before `bam2emase`.
+- The two mates' alignments are combined by a named rule, and each rule in `MATE_RULES` gets its own results from
+  one alignment: `either` (a read pair counts toward a transcript and founder where either mate aligned) gives the
+  same alignments as the earlier `5_common_align_merge.slurm.py`; `both` (only where both mates aligned) is
+  `emase get-common-alignments`, the step in the GBRS authors' paired-end pipeline. `scripts/merge_mates.py`
+  implements `either` with GBRS's own file reader and writer and checks that both files hold the same reads in the
+  same order. BAMs are no longer coordinate-sorted before `bam2emase`, which lists reads in sorted-name order anyway.
 - Each sample writes into `<sample>.partial/` and becomes `<sample>/` only when every output exists; `done.json`
   records inputs, sex, generation, transition-probability file, tool versions, alignment counts and output checksums.
   A finished sample is never overwritten; a failed attempt is kept.

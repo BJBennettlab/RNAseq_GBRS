@@ -19,6 +19,9 @@ Every step that reads data or computes now runs as a Slurm job, and a run is che
 - The pipeline runs under GBRS 1.0.0 and 1.1.0: alignments are converted with `emase bam2emase` (in 1.0.0 the same
   function as `gbrs bam2emase`, which 1.1.0 removed), and `scripts/merge_mates.py` passes file names by position
   (1.1.0 renamed the keyword).
+- The record step is `scripts/record_sample.py` (was inline in the job script) with tests. It reads bowtie 1.3's
+  summary line ('reads with at least one alignment'); the inline version expected older wording and stopped
+  every sample at its last step.
 - `done.json` records the pipeline revision (`git describe`, or the `REVISION` file of a copy without `.git`).
 - Defaults from measured runs: 64 GB and 12 hours per sample. Documentation: `docs/method.md` (GBRS and STAR,
   inputs, mate rules, versions), `docs/validation.md` and `docs/runtime.md`; `examples/other_slurm.sh`.

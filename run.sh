@@ -15,6 +15,10 @@ HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export PIPELINE_ROOT="$HERE"
 source "$HERE/config.sh"
 cmd=${1:-}; shift || true
+# Recorded in every sample's done.json: the git commit (with -dirty for uncommitted changes), or the REVISION
+# file written when the pipeline was copied without its .git folder.
+PIPELINE_REVISION=$(git -C "$HERE" describe --always --dirty --abbrev=12 2>/dev/null || cat "$HERE/REVISION" 2>/dev/null || echo unknown)
+export PIPELINE_REVISION
 
 need_python() { load_software "$MODULE_PYTHON"; }
 rows() { [[ -s "$SAMPLE_SHEET" ]] || { echo "Run ./run.sh sheet first" >&2; exit 1; }; echo $(( $(wc -l < "$SAMPLE_SHEET") - 1 )); }

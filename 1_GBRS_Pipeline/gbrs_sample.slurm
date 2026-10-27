@@ -104,10 +104,10 @@ done
 rm -f "$scratch"/*.emase.h5
 
 versions="$(tool bash -c 'pip list 2>/dev/null | grep -i -E "^(gbrs|emase) " | tr -s " " | paste -sd";"; bowtie --version | head -1' | paste -sd"|")|$(samtools --version | head -1)"
-python3 - "$out.partial" "$sample" "$r1" "$r2" "$sex" "$generation" "$tprob" "${GBRS_IMAGE:-}" "$versions" "$MATE_RULES" <<'PY'
+python3 - "$out.partial" "$sample" "$r1" "$r2" "$sex" "$generation" "$tprob" "${GBRS_IMAGE:-}" "$versions" "$MATE_RULES" "${PIPELINE_REVISION:-unknown}" <<'PY'
 import hashlib, json, re, sys
 from pathlib import Path
-d, sample, r1, r2, sex, gen, tprob, image, versions, rules = sys.argv[1:]
+d, sample, r1, r2, sex, gen, tprob, image, versions, rules, revision = sys.argv[1:]
 d = Path(d)
 def sha(p):
     h = hashlib.sha256()
@@ -129,6 +129,7 @@ for rule in rules.split():
         if not p.is_file() or p.stat().st_size == 0: raise SystemExit(f'missing output {rule}/{p.name}')
 record = {'sample': sample, 'reads': {'r1': r1, 'r2': r2}, 'sex': sex, 'generation': int(gen),
           'transition_probabilities': tprob, 'container': image, 'versions': versions, 'bowtie': stats,
+          'pipeline_revision': revision,
           'mate_rules': rules.split(),
           'outputs': {str(p.relative_to(d)): sha(p) for p in sorted(d.rglob('*')) if p.is_file()}}
 (d / 'done.json').write_text(json.dumps(record, indent=1) + '\n')

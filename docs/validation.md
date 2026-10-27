@@ -61,9 +61,22 @@ library at most 0.53.
 - An unfinished sample: read `slurmout/gbrs_<job>_<task>.out` and the `<sample>.failed_<time>/` folder, fix the
   cause and rerun only that row.
 
+## Comparing with earlier results
+
+When the libraries were processed before, or when a setting or GBRS version changes, compare sample by sample:
+
+```bash
+./run.sh compare --rule=either --name=dec2025 \
+    --other='/path/to/earlier/{sample}/{sample}_gbrs.quantified.diploid.genes.expected_read_counts'
+```
+
+The job writes `comparison/<rule>_vs_<name>.tsv` (per sample: total reads on each side, correlation of log
+counts and of founder counts, share of genes with the same diplotype) and a `.json` summary listing samples missing
+on either side and samples that are identical. Report the agreement as measured; there is no pass mark. In
+DO_Chln, rerunning the 2025 method from the same reads gave identical results; `both` against `either` gave
+founder-count correlations near 0.975 and the same diplotype for about 91% of genes.
+
 ## Other things to look at
 
 - `combined/<rule>/qc.tsv`: reads and aligned reads per mate. About 80% of reads aligned in the DO_Chln pilot.
-- For libraries processed before, compare with the earlier per-sample results (total counts, founder counts and
-  diplotype agreement) and report the agreement.
 - The genome plot (`<sample>.plotted.genome.pdf`) should show two founders at most positions, changing in blocks.

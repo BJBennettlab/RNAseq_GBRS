@@ -12,6 +12,8 @@ Every step that reads data or computes now runs as a Slurm job, and a run is che
   expression agrees with the sample list, that no two samples from different genotype groups share a genotype,
   and, when `DNA_ALLELEPROBS` or `STAR_COUNTS` is set, that each sample best matches its own mouse's DNA genotype
   and its own STAR library. `scripts/export_dna_alleleprobs.R` writes the DNA file from R/qtl2.
+- `./run.sh compare` (`scripts/compare_gbrs_runs.py`) compares a rule's results with another result for the same
+  libraries, sample by sample, for reruns and version changes.
 - The sample list may name read files in `r1` and `r2` columns instead of using `READS_DIR`, and may carry
   `mouse_id`, `genotype_group` and `star_library` for the checks. A read file listed for two samples stops the run.
 - `done.json` records the pipeline revision (`git describe`, or the `REVISION` file of a copy without `.git`).

@@ -6,6 +6,7 @@
 | `gbrs_downstream.sh` | `gbrs_sample.slurm` | the steps after the reads are combined, with an output check after each |
 | `gbrs_combine.slurm` | `./run.sh combine` (or `all`) | gene-by-sample tables for each mate rule (`scripts/combine_gbrs.py`) |
 | `gbrs_validate.slurm` | `./run.sh validate` (or `all`) | the checks in `docs/validation.md` (`scripts/validate_gbrs.py`) |
+| `gbrs_compare.slurm` | `./run.sh compare` | per-sample comparison with another result (`scripts/compare_gbrs_runs.py`) |
 
 Run them from the repository root after `./run.sh sheet` has written `WORKDIR/samples.tsv` (see the main README).
 

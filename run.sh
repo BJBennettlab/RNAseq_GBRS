@@ -13,7 +13,9 @@
 #   ./run.sh submit     the per-sample array (--array=LIST for chosen rows of samples.tsv)
 #   ./run.sh combine    gene-by-sample tables in WORKDIR/combined/<rule>/
 #   ./run.sh validate   checks in WORKDIR/validation/<rule>/ (docs/validation.md)
-# submit, combine and validate pass --dependency=, --begin=, --qos= and --nice= to sbatch.
+#   ./run.sh compare --rule=RULE --other='PATH/{sample}/...expected_read_counts' --name=NAME
+#                       per-sample comparison with another result for the same libraries
+# submit, combine, validate and compare pass --dependency=, --begin=, --qos= and --nice= to sbatch.
 # Every submitted job is recorded in WORKDIR/jobs.tsv.
 set -euo pipefail
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -25,7 +27,7 @@ cmd=${1:-}; shift || true
 PIPELINE_REVISION=$(git -C "$HERE" describe --always --dirty --abbrev=12 2>/dev/null || cat "$HERE/REVISION" 2>/dev/null || echo unknown)
 export PIPELINE_REVISION
 
-usage() { sed -n '2,17p' "$0" | sed 's/^# \{0,1\}//'; }
+usage() { sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//'; }
 rows() { [[ -s "$SAMPLE_SHEET" ]] || { echo "Run ./run.sh sheet first" >&2; exit 1; }; echo $(( $(wc -l < "$SAMPLE_SHEET") - 1 )); }
 list_has() { head -1 "$SAMPLE_LIST" | tr '\t' '\n' | tr -d '\r' | grep -qx "$1"; }
 reference_ready() { [[ -f "$REF_DIR/reference_manifest.json" && -e "$REF_DIR/ref.fa.fai" ]]; }
@@ -44,11 +46,14 @@ sb() {
 }
 
 # Options for submit, combine and validate.
-ARRAY=""; PASS=()
+ARRAY=""; PASS=(); RULE=""; OTHER=""; NAME=""
 parse_options() {
     for a in "$@"; do
         case "$a" in
             --array=*) [[ "$cmd" == submit ]] || { echo "--array is for submit" >&2; exit 1; }; ARRAY="${a#--array=}" ;;
+            --rule=*|--other=*|--name=*)
+                [[ "$cmd" == compare ]] || { echo "${a%%=*} is for compare" >&2; exit 1; }
+                case "$a" in --rule=*) RULE="${a#*=}" ;; --other=*) OTHER="${a#*=}" ;; *) NAME="${a#*=}" ;; esac ;;
             --dependency=*|--begin=*|--qos=*|--nice=*) PASS+=("$a") ;;
             --allow-unlisted) ;;
             *) echo "Unknown option: $a" >&2; exit 1 ;;
@@ -115,6 +120,14 @@ validate)
     parse_options "$@"
     j=$(sb validate 1_GBRS_Pipeline/gbrs_validate.slurm "$MATE_RULES" "${PASS[@]+"${PASS[@]}"}")
     echo "Submitted validate job $j" ;;
+compare)
+    parse_options "$@"
+    [[ " $MATE_RULES " == *" $RULE "* ]] || { echo "--rule must be one of: $MATE_RULES" >&2; exit 1; }
+    [[ "$OTHER" == *"{sample}"* ]] || { echo "--other needs a path template with {sample}" >&2; exit 1; }
+    [[ "$NAME" =~ ^[A-Za-z0-9_.-]+$ ]] || { echo "--name needs letters, digits, dot, dash or underscore" >&2; exit 1; }
+    j=$(COMPARE_RULE=$RULE COMPARE_OTHER=$OTHER COMPARE_NAME=$NAME sb compare 1_GBRS_Pipeline/gbrs_compare.slurm \
+        "$RULE vs $NAME: $OTHER" "${PASS[@]+"${PASS[@]}"}")
+    echo "Submitted compare job $j; result in $WORKDIR/comparison/${RULE}_vs_${NAME}.tsv" ;;
 all)
     mkdir -p "$WORKDIR"
     exec 8>"$WORKDIR/.submit.lock"

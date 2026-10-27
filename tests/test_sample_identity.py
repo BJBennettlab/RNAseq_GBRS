@@ -62,6 +62,24 @@ class SampleSheet(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "generation"):
             sheet.build(self.write_list([("S_1", "F", "")]), self.reads, allow_unlisted=True)
 
+    def test_explicit_read_paths(self):
+        path = self.root / "list.tsv"
+        path.write_text("sample\tsex\tgeneration\tr1\tr2\n"
+                        "A\tM\t43\treads/S_1/S_1_R1.fastq.gz\treads/S_1/S_1_R2.fastq.gz\n"
+                        f"B\tF\t43\t{self.reads}/S_10/S_10_R1.fastq.gz\t{self.reads}/S_10/S_10_R2.fastq.gz\n")
+        rows = sheet.build(path, "-")
+        self.assertEqual([r[0] for r in rows], ["A", "B"])
+        self.assertEqual(Path(rows[0][1]).read_bytes(), b"S_1")
+        self.assertEqual(Path(rows[1][2]).name, "S_10_R2.fastq.gz")
+
+    def test_one_file_for_two_samples_is_refused(self):
+        path = self.root / "list.tsv"
+        path.write_text("sample\tsex\tgeneration\tr1\tr2\n"
+                        "S_24\tM\t43\treads/S_1/S_1_R1.fastq.gz\treads/S_1/S_1_R2.fastq.gz\n"
+                        "S_240\tM\t43\treads/S_1/S_1_R1.fastq.gz\treads/S_1/S_1_R2.fastq.gz\n")
+        with self.assertRaisesRegex(ValueError, "also listed for S_24"):
+            sheet.build(path, "-")
+
 
 class Combine(unittest.TestCase):
     def setUp(self):

@@ -77,8 +77,10 @@ for mate in R1 R2; do
     tool bowtie -p "$cpus" -q -a --best --strata --sam -v 3 -x "$BOWTIE_INDEX" "$reads" 2> "$p.bowtie_$mate.log" \
         | samtools view -b -o "$scratch/$mate.bam" -
     echo "bam2emase $mate $(date -Is)"
+    [[ -s "$scratch/$mate.bam" ]] || { echo "ERROR: alignment of $mate wrote nothing" >&2; exit 1; }
     tool gbrs bam2emase -i "$scratch/$mate.bam" -m "$REF_DIR/emase.fullTranscripts.info" \
         -h "$HAPLOTYPES" -o "$scratch/$mate.emase.h5"
+    [[ -s "$scratch/$mate.emase.h5" ]] || { echo "ERROR: bam2emase of $mate wrote nothing" >&2; exit 1; }
     rm -f "$scratch/$mate.bam"
 done
 
@@ -92,23 +94,12 @@ for rule in $MATE_RULES; do
                     "$scratch/merged.emase.h5" ;;
         *)      echo "ERROR: MATE_RULES may contain either and both, not $rule" >&2; exit 1 ;;
     esac
+    [[ -s "$scratch/merged.emase.h5" ]] || { echo "ERROR: combining mates ($rule) wrote nothing" >&2; exit 1; }
     tool gbrs compress -i "$scratch/merged.emase.h5" -o "$q.compressed.emase.h5"
+    [[ -s "$q.compressed.emase.h5" ]] || { echo "ERROR: compress ($rule) wrote nothing" >&2; exit 1; }
     rm -f "$scratch/merged.emase.h5"
-    echo "quantify ($rule) $(date -Is)"
-    tool gbrs quantify -i "$q.compressed.emase.h5" -g "$REF_DIR/emase.gene2transcripts.tsv" \
-        -L "$REF_DIR/emase.pooled.fullTranscripts.info" -M "$EMASE_MODEL" --report-alignment-counts -o "$q"
-    echo "reconstruct ($rule) $(date -Is)"
-    tool gbrs reconstruct -e "$q.multiway.genes.tpm" -t "$tprob" -x "$REF_DIR/gbrs_emissions_all_tissues.avecs.npz" \
-        -g "$REF_DIR/ref.gene_pos.ordered_ensBuild_105.npz" -o "$q"
-    echo "quantify with genotypes ($rule) $(date -Is)"
-    tool gbrs quantify -i "$q.compressed.emase.h5" -G "$q.genotypes.tsv" -g "$REF_DIR/emase.gene2transcripts.tsv" \
-        -L "$REF_DIR/emase.pooled.fullTranscripts.info" -M "$EMASE_MODEL" --report-alignment-counts -o "$q"
-    echo "interpolate, export, plot ($rule) $(date -Is)"
-    tool gbrs interpolate -i "$q.genoprobs.npz" -g "$REF_DIR/ref.genome_grid.GRCm39.tsv" \
-        -p "$REF_DIR/ref.gene_pos.ordered_ensBuild_105.npz" -o "$q.interpolated.genoprobs.npz"
-    tool gbrs export -i "$q.interpolated.genoprobs.npz" -s "$HAPLOTYPES" -g "$REF_DIR/ref.genome_grid.GRCm39.tsv" \
-        -o "$q.gbrs.interpolated.genoprobs.tsv"
-    tool gbrs plot -i "$q.interpolated.genoprobs.npz" -o "$q.plotted.genome.pdf" -n "$sample"
+    echo "rule $rule: quantify, reconstruct, interpolate, export, plot"
+    "$HERE/1_GBRS_Pipeline/gbrs_downstream.sh" "$q.compressed.emase.h5" "$q" "$sample" "$sex" "$generation"
 done
 rm -f "$scratch"/*.emase.h5
 

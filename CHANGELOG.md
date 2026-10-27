@@ -24,6 +24,10 @@ reconstruction with sex-specific transition probabilities.
 - Each sample writes into `<sample>.partial/` and becomes `<sample>/` only when every output exists; `done.json`
   records inputs, sex, generation, transition-probability file, tool versions, alignment counts and output checksums.
   A finished sample is never overwritten; a failed attempt is kept.
+- The steps after combining the mates are in `1_GBRS_Pipeline/gbrs_downstream.sh`, which sets `GBRS_DATA` to the
+  reference directory and checks each step's output files before the next step: `gbrs reconstruct` needs
+  `GBRS_DATA/ref.fa.fai` (linked by `fetch_references.py`) and, without it, prints an error but exits 0. The same
+  script can finish a sample from an existing compressed alignment file.
 - `run.sh combine` (`scripts/combine_gbrs.py`) joins finished samples into gene-by-sample counts, diplotypes and
   founder counts, refuses unfinished or changed samples, and reads every cell back.
 - README: the pipeline uses Bowtie 1 (the scripts always did); setup and outputs are documented.

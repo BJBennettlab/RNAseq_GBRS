@@ -16,6 +16,8 @@ repository root after `./run.sh sheet` has written `WORKDIR/samples.tsv` (see th
 | Quantify with the reconstructed genotypes | `gbrs quantify -G` | `<sample>.diploid.*` (allele-specific expression) |
 | Interpolate, export and plot | `gbrs interpolate`, `export`, `plot` | `<sample>.interpolated.genoprobs.npz`, `.gbrs.interpolated.genoprobs.tsv`, `.plotted.genome.pdf` |
 
+The steps from quantification onward are in `gbrs_downstream.sh`, which checks every step's output files (some
+gbrs commands report an error and still exit 0) and can finish a sample from an existing compressed alignment file.
 BAMs and uncompressed EMASE files are written to node-local scratch and removed. A task writes into
 `<sample>.partial/` and renames it to `<sample>/` only after every output exists and `done.json` is written; a
 failed attempt is kept as `<sample>.failed_<time>/`. A finished sample is never overwritten.

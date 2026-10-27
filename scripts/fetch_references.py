@@ -61,6 +61,13 @@ def safe_extract(archive, dest):
         tar.extractall(dest)
 
 
+def link_fai(ref):
+    """GBRS reconstruct reads chromosome lengths from GBRS_DATA/ref.fa.fai."""
+    link = ref / "ref.fa.fai"
+    if not link.exists():
+        link.symlink_to("Mus_musculus.GRCm39.dna.primary_assembly.fa.fai")
+
+
 def check_existing(ref):
     manifest = ref / "reference_manifest.json"
     data = json.loads(manifest.read_text())
@@ -79,6 +86,7 @@ def main():
     ref = args.ref_dir
     if (ref / "reference_manifest.json").exists():
         data = check_existing(ref)
+        link_fai(ref)
         print(f"Reference directory verified: {len(data['sha256'])} files")
         return
     if ref.exists() and any(ref.iterdir()):
@@ -106,8 +114,9 @@ def main():
         else:
             part.rename(ref / name)
         print(f"verified {name}")
+    link_fai(ref)
     sha = {}
-    for path in sorted(p for p in ref.rglob("*") if p.is_file() and ".downloads" not in p.parts):
+    for path in sorted(p for p in ref.rglob("*") if p.is_file() and not p.is_symlink() and ".downloads" not in p.parts):
         sha[str(path.relative_to(ref))] = file_hash(path, "sha256")
     manifest = {
         "record": args.record,

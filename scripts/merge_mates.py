@@ -19,7 +19,8 @@ from gbrs.emase.AlignmentPropertyMatrix import AlignmentPropertyMatrix as APM
 rule, r1, r2, out = sys.argv[1:5]
 if rule not in ("either", "both"):
     raise SystemExit("rule must be either or both")
-a, b = APM(h5file=r1), APM(h5file=r2)
+# Positional arguments: GBRS 1.1.0 renamed the file keyword (h5file to h5_file).
+a, b = APM(None, r1), APM(None, r2)
 if tuple(a.shape) != tuple(b.shape):
     raise SystemExit(f"shapes differ: {a.shape} and {b.shape}")
 if list(a.lname) != list(b.lname):
@@ -33,6 +34,6 @@ for h in range(a.num_haplotypes):
     merged.eliminate_zeros()
     merged.data[:] = 1  # alignment incidence, as bam2emase writes it
     a.data[h] = merged
-a.save(h5file=out, complib="zlib")
+a.save(out, complib="zlib")
 nnz = sum(a.data[h].nnz for h in range(a.num_haplotypes))
 print(f"{rule}: {a.num_reads} reads, {a.num_loci} transcripts, {nnz} read-transcript-founder alignments")

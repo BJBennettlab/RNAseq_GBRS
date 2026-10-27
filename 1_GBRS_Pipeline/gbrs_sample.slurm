@@ -78,7 +78,8 @@ for mate in R1 R2; do
         | samtools view -b -o "$scratch/$mate.bam" -
     echo "bam2emase $mate $(date -Is)"
     [[ -s "$scratch/$mate.bam" ]] || { echo "ERROR: alignment of $mate wrote nothing" >&2; exit 1; }
-    tool gbrs bam2emase -i "$scratch/$mate.bam" -m "$REF_DIR/emase.fullTranscripts.info" \
+    # emase bam2emase: in GBRS 1.0.0 the same function as gbrs bam2emase, which 1.1.0 no longer has.
+    tool emase bam2emase -i "$scratch/$mate.bam" -m "$REF_DIR/emase.fullTranscripts.info" \
         -h "$HAPLOTYPES" -o "$scratch/$mate.emase.h5"
     [[ -s "$scratch/$mate.emase.h5" ]] || { echo "ERROR: bam2emase of $mate wrote nothing" >&2; exit 1; }
     rm -f "$scratch/$mate.bam"

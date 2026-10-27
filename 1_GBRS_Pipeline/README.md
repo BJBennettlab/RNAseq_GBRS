@@ -15,7 +15,7 @@ Run them from the repository root after `./run.sh sheet` has written `WORKDIR/sa
 | Step | Command | Output kept in `WORKDIR/samples/<sample>/` (per rule in `<rule>/`) |
 | --- | --- | --- |
 | Align R1 and R2 separately to the pooled-founder transcriptome | `bowtie -q -a --best --strata --sam -v 3` | `<sample>.bowtie_R1.log`, `_R2.log` |
-| Convert each BAM to an EMASE alignment file | `gbrs bam2emase -h A,B,C,D,E,F,G,H` | (temporary) |
+| Convert each BAM to an EMASE alignment file | `emase bam2emase -h A,B,C,D,E,F,G,H` | (temporary) |
 | Combine the two mates, once per rule in `MATE_RULES` | `either`: `scripts/merge_mates.py`; `both`: `emase get-common-alignments` | (temporary) |
 | Compress | `gbrs compress` | `<rule>/<sample>.compressed.emase.h5` |
 | Quantify (multiway) | `gbrs quantify -M 4 --report-alignment-counts` | `<sample>.multiway.*` |

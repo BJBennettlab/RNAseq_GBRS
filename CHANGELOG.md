@@ -16,6 +16,9 @@ Every step that reads data or computes now runs as a Slurm job, and a run is che
   libraries, sample by sample, for reruns and version changes.
 - The sample list may name read files in `r1` and `r2` columns instead of using `READS_DIR`, and may carry
   `mouse_id`, `genotype_group` and `star_library` for the checks. A read file listed for two samples stops the run.
+- The pipeline runs under GBRS 1.0.0 and 1.1.0: alignments are converted with `emase bam2emase` (in 1.0.0 the same
+  function as `gbrs bam2emase`, which 1.1.0 removed), and `scripts/merge_mates.py` passes file names by position
+  (1.1.0 renamed the keyword).
 - `done.json` records the pipeline revision (`git describe`, or the `REVISION` file of a copy without `.git`).
 - Defaults from measured runs: 64 GB and 12 hours per sample. Documentation: `docs/method.md` (GBRS and STAR,
   inputs, mate rules, versions), `docs/validation.md` and `docs/runtime.md`; `examples/other_slurm.sh`.

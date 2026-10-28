@@ -66,6 +66,19 @@ do_check() {  # do_check [before-setup]
     local fail=0
     [[ "$WORKDIR" != *CHANGEME* ]] || { echo "Set WORKDIR"; fail=1; }
     [[ "$SLURM_ACCOUNT" != CHANGEME ]] || { echo "Set SLURM_ACCOUNT"; fail=1; }
+    if [[ "$SLURM_ACCOUNT" != CHANGEME ]] && command -v sacctmgr >/dev/null; then
+        sacctmgr -nP show assoc user="$USER" format=Account 2>/dev/null | sort -u | grep -qx "$SLURM_ACCOUNT" \
+            || { echo "Slurm account $SLURM_ACCOUNT is not one of $USER's accounts"; fail=1; }
+        # On SCINet a project is the Slurm account and its storage, so the run writes only under that project.
+        if [[ -d /90daydata ]]; then
+            for d in "$WORKDIR" "$REF_DIR"; do
+                case "$(realpath -m "$d")/" in
+                    /project/"$SLURM_ACCOUNT"/*|/90daydata/"$SLURM_ACCOUNT"/*) ;;
+                    *) echo "$d is not under /project/$SLURM_ACCOUNT or /90daydata/$SLURM_ACCOUNT"; fail=1 ;;
+                esac
+            done
+        fi
+    fi
     if [[ ! -f "$SAMPLE_LIST" ]]; then
         echo "SAMPLE_LIST not found: $SAMPLE_LIST"; fail=1
     elif ! { list_has r1 && list_has r2; }; then

@@ -1,0 +1,9 @@
+cff-version: 1.2.0
+message: "If you use RNAseq_GBRS, please cite it as below."
+title: "RNAseq_GBRS: GBRS allele-specific expression for Diversity Outbred and Collaborative Cross mice"
+authors:
+  - family-names: Budke
+    given-names: Dawson
+    affiliation: "Bennett Lab"
+repository-code: "https://github.com/Dpbudke/RNAseq_GBRS"
+type: software

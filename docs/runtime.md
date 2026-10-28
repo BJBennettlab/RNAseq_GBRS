@@ -1,6 +1,6 @@
 # Run time, memory and storage
 
-Measured on Ceres in October 2026 with DO_Chln liver libraries of about 20 million read pairs, 16 CPUs per sample:
+Measured on Ceres in October 2026 with Bennett lab DO liver libraries of about 20 million read pairs, 16 CPUs per sample:
 
 | Step | Time per sample | Peak memory |
 | --- | --- | --- |
@@ -13,7 +13,7 @@ Measured on Ceres in October 2026 with DO_Chln liver libraries of about 20 milli
 
 GBRS 1.1.0 and 1.0.0 took the same time and memory.
 
-The whole DO_Chln cohort (388 libraries, both mate rules, 60 at a time with 16 CPUs and 64 GB each) took about 20
+A whole DO cohort (388 libraries, both mate rules, 60 at a time with 16 CPUs and 64 GB each) took about 20
 hours from submission to the last sample on Ceres (October 26 and 27, 2026).
 
 The defaults (`MEMORY=64G`, `TIME_LIMIT=12:00:00`) leave room for larger libraries. Alignment time grows with the

@@ -21,7 +21,7 @@ is missing from the file are listed as `unchecked`, not failed.
 
 The duplicates and DNA checks score two sets of founder probabilities by their overlap: at each autosomal grid
 point, the sum over the eight founders of the smaller of the two probabilities, averaged over points (every tenth
-grid point by default). 1 means identical. Values from the DO_Chln run of October 2026:
+grid point by default). 1 means identical. Values from a Bennett lab DO liver run of October 2026:
 
 | Pair | Overlap |
 | --- | --- |
@@ -37,7 +37,7 @@ unrelated DO mice; give mice expected to share a genotype (one CC strain, or one
 
 ### Sex
 
-In DO_Chln liver, males had 4 to 7 Xist counts per million and about 200 for the four Y genes; females about 1,600
+In DO liver, males had 4 to 7 Xist counts per million and about 200 for the four Y genes; females about 1,600
 Xist and none for the Y genes. A library with at least 100 Xist and 20 Y-gene counts per million is called `mixed`,
 which suggests reads from two mice. Other tissues express Xist at different levels; read the numbers, not only the
 call.
@@ -46,7 +46,7 @@ call.
 
 Log counts per million of the 2,000 genes that vary most among the STAR libraries, centred on each gene's mean
 (on each side's own mean when the run has at least ten samples, which removes the genes' overall difference between
-the two pipelines). In the four DO_Chln pilot libraries, the own library scored r = 0.75 to 0.82 and the next
+the two pipelines). In four DO pilot libraries, the own library scored r = 0.75 to 0.82 and the next
 library at most 0.53.
 
 ## When a check fails
@@ -73,10 +73,10 @@ When the libraries were processed before, or when a setting or GBRS version chan
 The job writes `comparison/<rule>_vs_<name>.tsv` (per sample: total reads on each side, correlation of log
 counts and of founder counts, share of genes with the same diplotype) and a `.json` summary listing samples missing
 on either side and samples that are identical. Report the agreement as measured; there is no pass mark. In
-DO_Chln, rerunning the 2025 method from the same reads gave identical results; `both` against `either` gave
+a Bennett lab DO study, rerunning the 2025 method from the same reads gave identical results; `both` against `either` gave
 founder-count correlations near 0.975 and the same diplotype for about 91% of genes.
 
 ## Other things to look at
 
-- `combined/<rule>/qc.tsv`: reads and aligned reads per mate. About 80% of reads aligned in the DO_Chln pilot.
+- `combined/<rule>/qc.tsv`: reads and aligned reads per mate. About 80% of reads aligned in the DO pilot.
 - The genome plot (`<sample>.plotted.genome.pdf`) should show two founders at most positions, changing in blocks.

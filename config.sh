@@ -49,7 +49,7 @@ SAME_MOUSE_SCORE=0.9   # genotype overlap at which two samples count as one mous
 # Software. GBRS and EMASE run from a container pinned by digest (Apptainer),
 # or from PATH when GBRS_SIF is empty. The default is GBRS 1.1.0 (tag
 # v1.1.0-338c782), the version JAX's pipeline uses. It gave byte-identical
-# results to GBRS 1.0.0 (tag v1.0.1, the lab's 2025 version) on four DO_Chln
+# results to GBRS 1.0.0 (tag v1.0.1, the lab's 2025 version) on four Bennett lab DO
 # libraries; a study already run with 1.0.0 keeps it (docs/method.md, Versions).
 # The container also brings Bowtie 1. SAMtools and Python come from site modules
 # (SOFTWARE_MODE=modules) or PATH (SOFTWARE_MODE=path).

@@ -9,7 +9,7 @@ spec = importlib.util.spec_from_file_location("record_sample", ROOT / "scripts" 
 record = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(record)
 
-# Written by bowtie 1.3.1 in the GBRS 1.0.1 container (DO_Chln, October 2026).
+# Written by bowtie 1.3.1 in the GBRS 1.0.1 container (October 2026).
 LOG = """# reads processed: 15717680
 # reads with at least one alignment: 12161917 (77.38%)
 # reads that failed to align: 3555763 (22.62%)

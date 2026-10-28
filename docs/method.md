@@ -51,7 +51,7 @@ between neighbouring positions; that rises with each generation of outbreeding.
 | CC | `transition_probabilities/tranprob.CC.G20.{sex}.npz` | 20 (not used) |
 | CC-RIX | default | 0 (`4_CCRIX_Implementation/README.md`) |
 
-When repeating an earlier study, keep its choices and record them. The DO_Chln rerun of October 2026 used generation
+When repeating an earlier study, keep its choices and record them. The lab's DO liver rerun of October 2026 used generation
 43 for every mouse, as the 2025 run did, although the recorded generations are 42 to 44.
 
 **Mate rule.** Bowtie aligns the two reads of a pair separately; `MATE_RULES` says how the two are combined.
@@ -61,7 +61,7 @@ When repeating an earlier study, keep its choices and record them. The DO_Chln r
 | `either` | where either read aligned | the lab's 2025 GBRS results |
 | `both` | only where both reads aligned (`emase get-common-alignments`) | the GBRS authors and JAX's pipeline |
 
-One run can produce both from the same alignment. On DOCHLN_100, `either` counted 18.7 million reads and `both`
+One run can produce both from the same alignment. On one DO liver library, `either` counted 18.7 million reads and `both`
 16.9 million; 91% of genes had the same diplotype and founder counts correlated at 0.975. Sample identity is the
 same under both. Use one rule within a study and report which.
 
@@ -80,8 +80,8 @@ EMASE alignment files, combine the two reads by the mate rule, compress, quantif
 
 | GBRS | Container | Notes |
 | --- | --- | --- |
-| 1.1.0 | `quay.io/jaxcompsci/gbrs_py3:v1.1.0-338c782` (default, pinned by digest) | March 2026: reworked file handling and memory use, bug fixes; used by JAX's pipeline. On four DO_Chln libraries (October 2026) its diploid counts, genotype probabilities and genotypes were byte-identical to 1.0.0's, with the same run time and memory. |
-| 1.0.0 | `quay.io/jaxcompsci/gbrs_py3:v1.0.1` | The version behind the lab's 2025 results and the DO_Chln rerun of October 2026. Rerun from the same reads, it reproduces the December 2025 DOCHLN_100 counts exactly. A study already processed with it can keep it. |
+| 1.1.0 | `quay.io/jaxcompsci/gbrs_py3:v1.1.0-338c782` (default, pinned by digest) | March 2026: reworked file handling and memory use, bug fixes; used by JAX's pipeline. On four Bennett lab DO libraries (October 2026) its diploid counts, genotype probabilities and genotypes were byte-identical to 1.0.0's, with the same run time and memory. |
+| 1.0.0 | `quay.io/jaxcompsci/gbrs_py3:v1.0.1` | The version behind the lab's 2025 results and the lab's DO liver rerun of October 2026. Rerun from the same reads, it reproduces that library's December 2025 counts exactly. A study already processed with it can keep it. |
 
 JAX's Nextflow pipeline ([cs-nf-pipelines](https://github.com/TheJacksonLaboratory/cs-nf-pipelines), workflow
 `gbrs`) runs the same steps with the same reference and the `both` rule. This repository keeps the lab's Slurm setup,

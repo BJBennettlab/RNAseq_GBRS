@@ -22,6 +22,8 @@ Every step that reads data or computes now runs as a Slurm job, and a run is che
 - The record step is `scripts/record_sample.py` (was inline in the job script) with tests. It reads bowtie 1.3's
   summary line ('reads with at least one alignment'); the inline version expected older wording and stopped
   every sample at its last step.
+- Each mate rule's output folder is created together with its compressed alignment file, not before the reads are
+  combined: a `/90daydata` cleanup removed seven samples' empty folders during the DO_Chln run.
 - `done.json` records the pipeline revision (`git describe`, or the `REVISION` file of a copy without `.git`).
 - The default container is GBRS 1.1.0 (`gbrs_py3:v1.1.0-338c782`, the version JAX's pipeline uses); on four DO_Chln
   libraries it gave byte-identical results to 1.0.0. Set `GBRS_IMAGE` and `GBRS_SIF` to the v1.0.1 image to keep

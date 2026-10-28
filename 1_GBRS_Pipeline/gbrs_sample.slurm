@@ -86,7 +86,7 @@ for mate in R1 R2; do
 done
 
 for rule in $MATE_RULES; do
-    d="$out.partial/$rule"; q="$d/$sample"; mkdir -p "$d"
+    d="$out.partial/$rule"; q="$d/$sample"
     echo "combine mates ($rule) $(date -Is)"
     case "$rule" in
         both)   tool emase get-common-alignments -i "$scratch/R1.emase.h5" -i "$scratch/R2.emase.h5" \
@@ -96,9 +96,12 @@ for rule in $MATE_RULES; do
         *)      echo "ERROR: MATE_RULES may contain either and both, not $rule" >&2; exit 1 ;;
     esac
     [[ -s "$scratch/merged.emase.h5" ]] || { echo "ERROR: combining mates ($rule) wrote nothing" >&2; exit 1; }
-    tool gbrs compress -i "$scratch/merged.emase.h5" -o "$q.compressed.emase.h5"
-    [[ -s "$q.compressed.emase.h5" ]] || { echo "ERROR: compress ($rule) wrote nothing" >&2; exit 1; }
+    tool gbrs compress -i "$scratch/merged.emase.h5" -o "$scratch/compressed.emase.h5"
+    [[ -s "$scratch/compressed.emase.h5" ]] || { echo "ERROR: compress ($rule) wrote nothing" >&2; exit 1; }
     rm -f "$scratch/merged.emase.h5"
+    # Create the rule's folder only together with its first file: a cleanup that removes empty folders (Ceres
+    # /90daydata, October 27, 2026) took seven samples' folders while they waited empty for the merge.
+    mkdir -p "$d" && mv "$scratch/compressed.emase.h5" "$q.compressed.emase.h5"
     echo "rule $rule: quantify, reconstruct, interpolate, export, plot"
     "$HERE/1_GBRS_Pipeline/gbrs_downstream.sh" "$q.compressed.emase.h5" "$q" "$sample" "$sex" "$generation"
 done

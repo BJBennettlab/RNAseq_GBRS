@@ -36,7 +36,8 @@ container_ready() { [[ -z "$GBRS_SIF" || -s "$GBRS_SIF" ]]; }
 # sb STAGE SCRIPT DETAIL [sbatch options...]: submit from WORKDIR, record the job, print its ID.
 sb() {
     local stage=$1 script=$2 detail=$3 job; shift 3
-    mkdir -p "$WORKDIR/slurmout"
+    # A file keeps the log folder from being removed as empty before a queued job starts and writes to it.
+    mkdir -p "$WORKDIR/slurmout" && touch "$WORKDIR/slurmout/.keep"
     job=$(cd "$WORKDIR" && sbatch --parsable --account="$SLURM_ACCOUNT" --partition="$SLURM_PARTITION" \
         --export=ALL,PIPELINE_ROOT="$HERE" "$@" "$HERE/$script")
     job=${job%%;*}

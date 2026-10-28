@@ -24,7 +24,9 @@ and `GBRS_SIF`. Temporary BAM and EMASE files go to node-local scratch (`TMPDIR`
 
 - Only `run.sh` runs on the login node; every step that reads data or computes is a Slurm job. Apptainer does not
   run on Ceres login nodes, which is why `./run.sh setup` is a job.
-- `/90daydata` removes files not read for 90 days. Copy accepted results to `/project` (or Box) before then.
+- `/90daydata` removes files not read for 90 days, and its cleanup also removed empty folders while a run was going
+  (October 27, 2026). The pipeline creates each output folder together with its first file. Copy accepted results
+  to `/project` (or Box) before 90 days pass.
 - Many short ssh sessions in a row can make the login nodes refuse new connections for a while; reuse one
   connection (OpenSSH `ControlMaster`) when scripting.
 

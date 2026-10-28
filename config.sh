@@ -53,6 +53,9 @@ SAME_MOUSE_SCORE=0.9   # genotype overlap at which two samples count as one mous
 # libraries; a study already run with 1.0.0 keeps it (docs/method.md, Versions).
 # The container also brings Bowtie 1. SAMtools and Python come from site modules
 # (SOFTWARE_MODE=modules) or PATH (SOFTWARE_MODE=path).
+# The lab keeps copies with the same digests at ghcr.io/bjbennettlab/gbrs (1.1.0 and 1.0.1); to use one, replace
+# quay.io/jaxcompsci/gbrs_py3 below with ghcr.io/bjbennettlab/gbrs and keep the digest. On Ceres the pulled images
+# are also in /project/do2_projects/containers (gbrs_1.1.0.sif, gbrs_1.0.1.sif).
 GBRS_IMAGE="docker://quay.io/jaxcompsci/gbrs_py3@sha256:95ac892ffb209ee7a39846dfd62203b8738d440d436c4202f64caa9d8ca329b0"
 GBRS_SIF="${WORKDIR}/containers/gbrs_py3_v1.1.0-338c782.sif"
 SOFTWARE_MODE="modules"
